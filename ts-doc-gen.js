@@ -321,7 +321,11 @@ function addAttribs(matchObj, tags) {
 function genClassIfaceDocTags(classIface) {
     let tags = [{ name:classIface.type, value:classIface.name, order: 0.1 }];
     if (classIface.extends) tags.push({ name:'extends', value:classIface.extends, order: 0.3});
-    if (classIface.implements) classIface.implements.forEach(typeName => tags.push({ name:'implements', value: '{'+typeName+'}', order: 0.4}) );
+    if (classIface.implements) classIface.implements.forEach((typeName, idx) => tags.push({ 
+        name:'implements', 
+        value: '{'+typeName+'}', 
+        order: 0.4 + idx * 0.01
+    }) );
     addAttribs(classIface, tags);
     return tags;    
 }
@@ -410,8 +414,8 @@ function genMethodPropDocTags(methodProp, className) {
             tags.push({name:'constructs', value: className, order: 0.3 });
             methodProp.returnType = className;
         }
-        methodProp.params.forEach(param => {
-            tags.push({name:'param', value: param.optional ? `[${param.name}]` : param.name, type: param.type || 'any', order: 0.4});
+        methodProp.params.forEach((param, idx) => {
+            tags.push({name:'param', value: param.optional ? `[${param.name}]` : param.name, type: param.type || 'any', order: 0.4 + idx * 0.01});
         });
         tags.push({name:'returns', type: methodProp.returnType || 'void', order: 0.7 });
     } else {
@@ -426,6 +430,7 @@ function genMethodPropDocTags(methodProp, className) {
 function getDocTagInserts(contents, position, tags) {
     // find the block comment before `position`
     let commentPos = findBlockCommentBefore(contents, position);
+    const indent = commentPos.indent;
     let lines = [];
     let inserts = [];
     let beforeLastLine;
@@ -437,11 +442,19 @@ function getDocTagInserts(contents, position, tags) {
         while (match = oneLine.exec(comment)) {
             lines.push({ index: commentPos.index + match.index, value: match[0] });
         }
-        beforeLastLine = lines[lines.length-1].index;
+        const lastLine = lines[lines.length-1];
+        
+        if (lines.length === 1 || !/^\s*\*\/$/.test(lastLine.value)) {
+            beforeLastLine = commentPos.index + comment.length-2;   // step back from '*/'
+            inserts.push({ index: beforeLastLine, value: '\n', order: 0 },
+                         { index: beforeLastLine, value: indent + ' ', order: 0.99 });
+        } else {
+            beforeLastLine = lastLine.index;            
+        }
     } else {
         beforeLastLine = commentPos.index;
-        inserts.push({ index: beforeLastLine, value: '/**\n', order: 0 });
-        inserts.push({ index: beforeLastLine, value: '*/\n', order: 0.9 });
+        inserts.push({ index: beforeLastLine, value: indent + '/**\n', order: 0 },
+                     { index: beforeLastLine, value: indent + ' */\n', order: 0.99 });
     }
     
     tags.forEach(tag => {
@@ -453,17 +466,17 @@ function getDocTagInserts(contents, position, tags) {
                 if (tag.type && !match[2]) {    // insert type
                     inserts.push({
                         index: line.index + match.index + match[1].length, 
-                        value: ' ' + tag.type,
+                        value: ' {' + tag.type + '}',
                         order: tag.order || 0.5 
                     });
                 }
                 return true;
             }
-        })) {   
+        })) {
             // didn't find @tag, insert a new line
             inserts.push({ 
                 index: beforeLastLine, 
-                value: `* @${tag.name}${tag.type ? ' {' + tag.type + '}' : ''}${tag.value ? ' ' + tag.value : ''}\n`,
+                value: indent + ` * @${tag.name}${tag.type ? ' {' + tag.type + '}' : ''}${tag.value ? ' ' + tag.value : ''}\n`,
                 order: tag.order || 0.5
             });
         }
@@ -484,14 +497,16 @@ function findBlockCommentBefore(contents, position) {
         while (pos > 0 && !(contents[pos] === '/' && contents[pos+1] === '*')) pos--;
         
         if (contents[pos] === '/' && contents[pos+1] === '*') {
-            return { index: pos, length: end-pos };
+            let indentPos = pos-1;
+            while (/[ \t]/.test(contents[indentPos])) indentPos--;
+            return { index: pos, length: end-pos, indent: contents.substring(indentPos+1, pos) };
         }
     }
     
     pos = position-1;
     while (/[ \t]/.test(contents[pos])) pos--;
     
-    return { index: pos+1, length: 0 };
+    return { index: pos+1, length: 0, indent: contents.substring(pos+1, position) };
 }
 
 function applyInserts(contents, inserts) {
@@ -514,24 +529,24 @@ let lineCommentRE = /\/\/.*/g;
 let commentRE = joinRegexs(blockCommentRE, '|', lineCommentRE);
 
 function generateDocComments(fileDescriptions) {
-    const classIfaceMathcer = new PatternMatcher(classInterfacePattern, commentRE);
-    const methodPropMathcer = new PatternMatcher(methodPropertyPattern, commentRE);
+    const classIfaceMatcher = new PatternMatcher(classInterfacePattern, commentRE);
+    const methodPropMatcher = new PatternMatcher(methodPropertyPattern, commentRE);
     
     return fileDescriptions.forEach(desc => {
         const contents = desc.contents;
         let inserts = [];
 
-        classIfaceMathcer.setCode(contents);
+        classIfaceMatcher.setCode(contents);
         let classIface;
 
-        while (classIface = classIfaceMathcer.next()) {
+        while (classIface = classIfaceMatcher.next()) {
             //console.log(`found ${classIface.type} ${classIface.name}`, genClassIfaceDocTags(classIface));
             [].push.apply(inserts, getDocTagInserts(contents, classIface.index, genClassIfaceDocTags(classIface)));
             
             if (classIface.contents) {
-                methodPropMathcer.setCode(classIface.contents.value);
+                methodPropMatcher.setCode(classIface.contents.value);
                 let methodProp;
-                while (methodProp = methodPropMathcer.next()) {
+                while (methodProp = methodPropMatcher.next()) {
                     //console.log(`--- found ${methodProp.isMethod ? 'method' : 'property'} ${methodProp.name}`, genMethodPropDocTags(methodProp, classIface.name));
                     let methodInserts = getDocTagInserts(classIface.contents.value, methodProp.index, genMethodPropDocTags(methodProp, classIface.name));
                     methodInserts.forEach(insert => insert.index += classIface.contents.index);

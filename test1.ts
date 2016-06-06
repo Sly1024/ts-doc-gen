@@ -12,9 +12,19 @@ interface Iface1 extends Iface2 {
 }
 
 interface Iface2 {
+    // line comment here    
     prop1: string;
+    
+    /**
+     * This is my optional property
+     * @property prop2 - a description here
+     */
     prop2?: () => any;
-    prop3;
+    
+    /**
+     * @property {NuMbEr} prop3
+     */
+    prop3:number;
 }
 
 
@@ -39,6 +49,7 @@ abstract class MyClass extends Base implements Iface1, Iface2 {
 
     private thingyBuilderMap: { [id:string] : () => Thingy } = {};
 
+    /** what now? */
     noParamNoReturnType() {
         return 0;
     }
