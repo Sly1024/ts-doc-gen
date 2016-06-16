@@ -431,6 +431,36 @@ function oneLiner(str) {
     return str.replace(/[\s\r\n]+/g, ' ');
 }
 
+// matches "@tag.name {type} tag.value"
+function getTagPattern(tag) { 
+    return {
+        type: 'obj',
+        val: [
+            { type: 'prop', name: 'tagName', val: ['@', tag.name] },
+            ' ',
+            {
+                type: '?',
+                val:[ 
+                    '{', ' ',
+                    { type: 'prop', name: 'type', val: 
+                        { type: 'code', sep: [' ', '}'], min: 1 } 
+                    }, 
+                    ' ', '}'
+                ],
+                and: (ret, code, pos, props) => {
+                    if (tag.value && ret.value === oneLiner(tag.value)) {
+                        props.type = null;
+                        return { index: ret.index, length: 0, value: '' };
+                    }
+                }
+            },
+            ' '
+        ].concat( tag.value ? [
+            ' ', oneLiner(tag.value)
+        ] : [])
+    };
+}
+
 function getDocTagInserts(contents, position, tags) {
     // find the block comment before `position`
     let commentPos = findBlockCommentBefore(contents, position);
@@ -466,16 +496,16 @@ function getDocTagInserts(contents, position, tags) {
     }
     
     tags.forEach(tag => {
-        // TODO: replce regex special chars!
-        // TODO: need to use PatternMatcher, because {type} can contain "{}" characters. 
-        //  [1] = "@tag", [2] = "{type}"
-        let tagRE = new RegExp(`(@${tag.name})(\\s+\\{[^}]+\\})?${tag.value ? '\\s+'+oneLiner(tag.value) : '[\\s\\r\\n]'}`);
+        let tagMatcher = new PatternMatcher(getTagPattern(tag));
+
         if (!lines.some(line => {
-            let match = line.value.match(tagRE);
+            tagMatcher.setCode(line.value);
+            let match = tagMatcher.next();
+
             if (match) {
-                if (tag.type && !match[2]) {    // insert type
+                if (tag.type && !match.type) {    // insert type
                     inserts.push({
-                        index: line.index + match.index + match[1].length, 
+                        index: line.index + match.index + match.tagName.length, 
                         value: ' {' + oneLiner(tag.type) + '}',
                         order: tag.order || 0.5 
                     });
