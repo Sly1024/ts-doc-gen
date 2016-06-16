@@ -367,7 +367,7 @@ let methodPropertyPattern = { type: 'obj', val: [
             { type: '?', val: [
                 ':', ' ',
                 { type: 'prop', name: 'returnType', val: { type: 'code', min: 1, sep:
-                    { type: 'obj', // this is just to be able to use 'and'
+                    { 
                         val: [' ', /[;{}]|$/g ],   // whitespace followed by ';' or '{' or '}' or end_of_string
                         and: (ret, code, pos) => {  // not to match '=> {'
                             let p = pos + ret.length-1;
@@ -427,6 +427,10 @@ function genMethodPropDocTags(methodProp, className) {
     return tags;    
 }
 
+function oneLiner(str) {
+    return str.replace(/[\s\r\n]+/g, ' ');
+}
+
 function getDocTagInserts(contents, position, tags) {
     // find the block comment before `position`
     let commentPos = findBlockCommentBefore(contents, position);
@@ -436,7 +440,11 @@ function getDocTagInserts(contents, position, tags) {
     let beforeLastLine;
     
     if (commentPos.length > 0) {
-        let comment = contents.substr(commentPos.index, commentPos.length)
+        let comment = contents.substr(commentPos.index, commentPos.length);
+
+        // TODO: only if an option is set!
+        if (comment.match(/@inheritdoc/i)) return [];
+
         const oneLine = /^.+?$/gm;
         let match;
         while (match = oneLine.exec(comment)) {
@@ -458,15 +466,17 @@ function getDocTagInserts(contents, position, tags) {
     }
     
     tags.forEach(tag => {
+        // TODO: replce regex special chars!
+        // TODO: need to use PatternMatcher, because {type} can contain "{}" characters. 
         //  [1] = "@tag", [2] = "{type}"
-        let tagRE = new RegExp(`(@${tag.name})(\\s+\{[^}]+\\})?${tag.value ? '\\s+'+tag.value : '\\b'}`);
+        let tagRE = new RegExp(`(@${tag.name})(\\s+\\{[^}]+\\})?${tag.value ? '\\s+'+oneLiner(tag.value) : '[\\s\\r\\n]'}`);
         if (!lines.some(line => {
             let match = line.value.match(tagRE);
             if (match) {
                 if (tag.type && !match[2]) {    // insert type
                     inserts.push({
                         index: line.index + match.index + match[1].length, 
-                        value: ' {' + tag.type + '}',
+                        value: ' {' + oneLiner(tag.type) + '}',
                         order: tag.order || 0.5 
                     });
                 }
@@ -476,7 +486,7 @@ function getDocTagInserts(contents, position, tags) {
             // didn't find @tag, insert a new line
             inserts.push({ 
                 index: beforeLastLine, 
-                value: indent + ` * @${tag.name}${tag.type ? ' {' + tag.type + '}' : ''}${tag.value ? ' ' + tag.value : ''}\n`,
+                value: indent + ` * @${tag.name}${tag.type ? ' {' + oneLiner(tag.type) + '}' : ''}${tag.value ? ' ' + oneLiner(tag.value) : ''}\n`,
                 order: tag.order || 0.5
             });
         }

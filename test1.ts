@@ -47,6 +47,17 @@ abstract class MyClass extends Base implements Iface1, Iface2 {
         throw 'x';
     }
 
+    /**
+     * @returns {string} - somestring 
+     */
+    private returner():string {
+        return '';
+    }
+
+    private thingy = {
+        blah: 5
+    };
+
     private thingyBuilderMap: { [id:string] : () => Thingy } = {};
 
     /** what now? */
@@ -64,5 +75,12 @@ abstract class MyClass extends Base implements Iface1, Iface2 {
      */
     abstract public absPub(): { didItWork?:boolean } {}
     public abstract pubAbs() {}
+
+    /**
+     * @inheritDoc
+     */
+    inherited(param1:number) {
+
+    }
 }
 
