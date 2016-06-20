@@ -25,6 +25,14 @@ interface Iface2 {
      * @property {NuMbEr} prop3
      */
     prop3:number;
+
+    /**
+     * @default [ 'foo', 'bar' ]
+     */
+    array = [
+        'foo',
+        'bar'
+    ];
 }
 
 

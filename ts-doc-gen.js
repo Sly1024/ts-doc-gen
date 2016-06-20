@@ -456,7 +456,7 @@ function oneLiner(str) {
 }
 
 function trimBrackets(str) {
-    return str && str.replace(/^\[(.*)\]$/, '$1');
+    return str && str.replace(/^\[(.*)\]$/, '$1').trim();
 }
 
 // matches "@tag.name {type} tag.value"
@@ -464,7 +464,7 @@ function getTagPattern(tag) {
     return {
         type: 'obj',
         val: [
-            { type: 'prop', name: 'tagName', val: ['@', tag.name] },
+            { type: 'prop', name: 'tagName', val: ['@', tag.name === 'return' ? /returns?/g : tag.name] },
             ' ',
             {
                 type: '?',
@@ -487,7 +487,7 @@ function getTagPattern(tag) {
             ' ',
             { type: 'propobj', name: 'tagValue' , val:[
                 { type: '?', val : ['[', ' '] },
-                oneLiner(tag.matchValue || tag.value),
+                trimBrackets(oneLiner(tag.matchValue || tag.value)),
                 { type: '?', val: tag.defaultValue ? [' ', '=', ' ', tag.defaultValue] : '' },
                 { type: '?', val : [' ', ']'] }
             ]}
