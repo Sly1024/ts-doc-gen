@@ -342,6 +342,10 @@ let methodPropertyPattern = { type: 'obj', val: [
                     sep: ',',
                     val: { type: 'obj', val: [
                         ' ',
+                        { type: '?', 
+                            val: { type: 'prop', name: 'visibility', val: /private|protected|public/g } 
+                        },
+                        ' ',
                         { type: 'prop', name: 'name', val: { type: 'id'} },
                         { type: 'prop', name: 'optional', val: { 
                             // tricky? this is an optional literal '?'
