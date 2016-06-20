@@ -7,7 +7,7 @@ function findMatch(code, pos) {
     let inString = false;   // contains the quote character if we're inside a quoted string
 
     do {
-        let c = code.charAt(pos++);
+        let c = code[pos++];
         if (inString) {                             // we're inside a string
             if (c === '\\') pos++; else             // skip escaped chars
             if (c === inString) inString = false;   // found the end of the string
@@ -19,14 +19,26 @@ function findMatch(code, pos) {
             } else if (pairs[c]) {                  // found an open parenthesis
                 stack.push(pairs[c]);
             } else
+            // line comment
+            if (c === '/' && pos > 1 && code[pos-2] === '/') {
+                // skip till the end of the line
+                while (pos < code.length && !/[\r\n]/.test(code[pos])) pos++;
+            } else
+            // block comment
+            if (c === '*' && pos > 1 && code[pos-2] === '/') {
+                // skip till we find "*/"
+                pos++;
+                while (pos < code.length && !(code[pos-1] === '*' && code[pos] === '/')) pos++;
+                pos++;
+            } else
             // could be a regex
             // make sure it's not a line comment: "//"
-            if (c === '/' && code.charAt(pos) !== '/' && code.charAt(pos-2) !== '/') {
+            if (c === '/' && code[pos] !== '/') {
                 for (let end = pos+1; end < code.length; end++) {
-                    let c2 = code.charAt(end);
+                    let c2 = code[end];
                     if (c2 === '\r' || c2 === '\n') break;  // can't be regex
                     // ending "/" of the regex, if it's not escaped
-                    if (c2 === '/' && code.charAt(end-1) !== '\\') {
+                    if (c2 === '/' && code[end-1] !== '\\') {
                         try {
                             // let's try to compile the regex
                             var rx = new RegExp(code.substring(pos, end));

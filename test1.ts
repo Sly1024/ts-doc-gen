@@ -32,7 +32,8 @@ interface Iface2 {
  * class CommentClass implements comment { public haha() {} }
  */
 abstract class MyClass extends Base implements Iface1, Iface2 {
-
+    // What's up? this is a line comment with a single quote character
+    
     /**
      * @param other
      */
