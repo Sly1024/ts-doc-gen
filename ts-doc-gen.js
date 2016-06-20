@@ -419,7 +419,15 @@ function genMethodPropDocTags(methodProp, className) {
             methodProp.returnType = className;
         }
         methodProp.params.forEach((param, idx) => {
-            tags.push({name:'param', value: param.optional ? `[${param.name}]` : param.name, type: param.type || 'any', order: 0.4 + idx * 0.01});
+            tags.push({
+                name:'param', 
+                matchValue: param.name,
+                value: param.optional || param.defaultValue ? `[${param.name}${param.defaultValue ? '='+oneLiner(param.defaultValue) : ''}]` : param.name,
+                defaultValue: oneLiner(param.defaultValue),
+                optional: param.optional, 
+                type: param.type || 'any', 
+                order: 0.4 + idx * 0.01
+            });
         });
         tags.push({name:'returns', type: methodProp.returnType || 'void', order: 0.7 });
     } else {
@@ -432,11 +440,11 @@ function genMethodPropDocTags(methodProp, className) {
 }
 
 function oneLiner(str) {
-    return str.replace(/[\s\r\n]+/g, ' ');
+    return str && str.replace(/[\s\r\n]+/g, ' ');
 }
 
 function trimBrackets(str) {
-    return str.replace(/^\[(.*)\]$/, '$1');
+    return str && str.replace(/^\[(.*)\]$/, '$1');
 }
 
 // matches "@tag.name {type} tag.value"
@@ -467,7 +475,8 @@ function getTagPattern(tag) {
             ' ',
             { type: 'propobj', name: 'tagValue' , val:[
                 { type: '?', val : ['[', ' '] },
-                trimBrackets(oneLiner(tag.value)),
+                oneLiner(tag.matchValue || tag.value),
+                { type: '?', val: tag.defaultValue ? [' ', '=', ' ', tag.defaultValue] : '' },
                 { type: '?', val : [' ', ']'] }
             ]}
         ] : [])
@@ -535,10 +544,17 @@ function getDocTagInserts(contents, position, tags) {
                             order: tag.order
                         });
                     }
-                    if (tag.value[tag.value.length-1] === ']' && mTagVal[mTagVal.length-1] !== ']') {
+                    if (tag.value.substr(-1) === ']' && mTagVal.substr(-1) !== ']') {
                         inserts.push({
                             index: line.index + match.tagValue.index + mTagVal.length,
                             value: ']',
+                            order: tag.order + 0.001    // needs to go after the "=defaultValue"
+                        });
+                    }
+                    if (tag.defaultValue && mTagVal.indexOf(oneLiner(tag.defaultValue)) === -1) {
+                        inserts.push({
+                            index: line.index + match.tagValue.index + mTagVal.length + (mTagVal.substr(-1) === ']' ? -1 : 0),
+                            value: '=' + oneLiner(tag.defaultValue),
                             order: tag.order
                         });
                     }

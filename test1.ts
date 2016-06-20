@@ -33,6 +33,9 @@ interface Iface2 {
  */
 abstract class MyClass extends Base implements Iface1, Iface2 {
 
+    /**
+     * @param other
+     */
     constructor(protected other: OtherClass = null) {
         super();
         var x = call_stuff(42, () => 5 );
