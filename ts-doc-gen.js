@@ -237,7 +237,7 @@ function processPattern(pattern) {
         }
     } else
     if (typeof pattern === 'object') {    // must be an object
-        if (pattern.type === 'id') pattern = /[_a-zA-Z]\w*/g;
+        if (pattern.type === 'id') pattern = /[$_a-zA-Z][$\w\.]*/g;
         else {
             ['val', 'sep', 'then', 'else'].forEach(prop => {
                 if (pattern[prop]) pattern[prop] = processPattern(pattern[prop]);
@@ -343,7 +343,7 @@ function genClassIfaceDocTags(classIface) {
 }
 
 let methodPropertyPattern = { type: 'obj', val: [
-    { type: 'prop', name: 'name', val: { type: 'id' }, attribs: ['public', 'protected', 'private', 'abstract']},
+    { type: 'prop', name: 'name', val: { type: 'id' }, attribs: ['public', 'protected', 'private', 'abstract', 'static']},
     ' ', 
     { type: 'if', val: { val: '(', and: (ret, code, pos, props) => { props.isMethod = !!ret.value } },         
         then: [ 
