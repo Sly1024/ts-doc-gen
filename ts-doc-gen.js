@@ -435,6 +435,10 @@ function oneLiner(str) {
     return str.replace(/[\s\r\n]+/g, ' ');
 }
 
+function trimBrackets(str) {
+    return str.replace(/^\[(.*)\]$/, '$1');
+}
+
 // matches "@tag.name {type} tag.value"
 function getTagPattern(tag) { 
     return {
@@ -460,7 +464,12 @@ function getTagPattern(tag) {
             },
             ' '
         ].concat( tag.value ? [
-            ' ', oneLiner(tag.value)
+            ' ',
+            { type: 'propobj', name: 'tagValue' , val:[
+                { type: '?', val : ['[', ' '] },
+                trimBrackets(oneLiner(tag.value)),
+                { type: '?', val : [' ', ']'] }
+            ]}
         ] : [])
     };
 }
@@ -511,8 +520,28 @@ function getDocTagInserts(contents, position, tags) {
                     inserts.push({
                         index: line.index + match.index + match.tagName.length, 
                         value: ' {' + oneLiner(tag.type) + '}',
-                        order: tag.order || 0.5 
+                        order: tag.order
                     });
+                }
+                
+                if (tag.value) {
+                    const mTagVal = match.tagValue.value;
+                    // insert brackets around @prop [name] to indicate it's optional
+                    // TODO: remove [] if it's the other way around
+                    if (tag.value[0] === '[' && mTagVal[0] !== '[') {
+                        inserts.push({
+                            index: line.index + match.tagValue.index,
+                            value: '[',
+                            order: tag.order
+                        });
+                    }
+                    if (tag.value[tag.value.length-1] === ']' && mTagVal[mTagVal.length-1] !== ']') {
+                        inserts.push({
+                            index: line.index + match.tagValue.index + mTagVal.length,
+                            value: ']',
+                            order: tag.order
+                        });
+                    }
                 }
                 return true;
             }
@@ -521,7 +550,7 @@ function getDocTagInserts(contents, position, tags) {
             inserts.push({ 
                 index: beforeLastLine, 
                 value: indent + ` * @${tag.name}${tag.type ? ' {' + oneLiner(tag.type) + '}' : ''}${tag.value ? ' ' + oneLiner(tag.value) : ''}\n`,
-                order: tag.order || 0.5
+                order: tag.order
             });
         }
     });

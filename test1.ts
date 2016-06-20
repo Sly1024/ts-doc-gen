@@ -42,6 +42,9 @@ abstract class MyClass extends Base implements Iface1, Iface2 {
         thisIsAmethodCall(some, stuff);
     }
 
+    /**
+     * @param param2 - da!
+     */
     protected myFunc (param1 : string, param2?: () => { [id:string] : number } ) : (x,y) => (z:number) => { [x:string]:{ "}":number } }
     {
         throw 'x';
